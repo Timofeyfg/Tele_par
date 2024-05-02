@@ -1,0 +1,295 @@
+import json
+import sqlite3
+import flet as ft
+import requests
+from bs4 import BeautifulSoup
+
+import csv
+# класс пользовательского соглашения
+class Check(ft.Column):
+
+
+    def __init__(self, document, text, text_check,  panel_par):
+        super().__init__()
+
+        self.btn = ft.TextButton(text, width=150, on_click=self.btn, disabled=True)
+        self.check = ft.Checkbox(text_check, on_change=self.click)
+        self.panel_par = panel_par
+        self.document = ft.Text(document)
+        self.controls = [
+            self.btn,
+            self.document,
+            self.check,
+
+        ]
+
+    def click(self, e):
+        if self.check.value == True:
+            self.btn.disabled = False
+        else:
+            self.btn.disabled = True
+        self.update()
+    def btn(self, e):
+        self.page.clean()
+        self.page.add(self.panel_par)
+# класс для парсинга с помощью метода find
+class Parsing(ft.Column):
+    def __init__(self, url, tag, atr, atr_name):
+        super().__init__()
+        self.text = ft.Text('Парсинг')
+        self.url = url
+        self.tag = tag
+        self.atr = atr
+        self.atr_name = atr_name
+        self.btn = ft.TextButton(text='Парсинг', on_click=self.parse)
+        self.controls = [
+            self.text,
+            self.url,
+            self.tag,
+            self.atr,
+            self.atr_name,
+            self.btn
+        ]
+    def parse(self, e):
+        try:
+            response = requests.get(self.url.value)
+            response.encoding ='utf-8'
+            soup = BeautifulSoup(response.text, 'lxml')
+            res = soup.find(self.tag.value, attrs={self.atr.value: self.atr_name.value})
+            self.page.clean()
+            self.page.add(ft.Text(f'Все данные: {res.text}'))
+            self.url.value = ''
+            self.tag.value = ''
+            self.atr.value = ''
+            self.atr_name.value = ''
+        except Exception:
+            self.page.snack_bar = ft.SnackBar(ft.Text('Неверно введённые данные!'))
+            self.page.snack_bar.open = True
+            self.page.update()
+# класс для парсинга с помощью метода find_all
+class Find_all(ft.Column):
+    def __init__(self, url2, tag2, atr2, atr_name2):
+        super().__init__()
+        self.text = ft.Text('Парсинг')
+        self.url2 = url2
+        self.tag2 = tag2
+        self.atr2 = atr2
+        self.atr_name2 = atr_name2
+        self.btn2 = ft.TextButton(text='Парсинг', on_click=self.parcing2)
+        self.controls = [
+            self.text,
+            self.url2,
+            self.tag2,
+            self.atr2,
+            self.atr_name2,
+            self.btn2
+        ]
+    def parcing2(self, e):
+        try:
+            response = requests.get(f'{self.url2.value}')
+            if response.status_code == 200:
+                response.encoding = 'utf-8'
+                soup = BeautifulSoup(response.text, 'lxml')
+                par = [x for x in soup.find_all(f'{self.tag2.value}', attrs={f'{self.atr2.value}': f'{self.atr_name2.value}'})]
+
+                with open('res.csv', 'a', encoding='utf-8-sig', newline='') as file:
+                    writer = csv.writer(file, delimiter=';')
+                    for item in par:
+                            # Формируем строку для записи
+                        flatten = item.get_text(strip=True).replace(' ', '').split('\n')
+                        writer.writerow(flatten)
+                self.url2.value = ''
+                self.tag2.value = ''
+                self.atr2.value = ''
+                self.atr_name2.value = ''
+                self.page.clean()
+                self.page.add(
+                    ft.Text('Чтобы увидеть информацию нужно перейти по ссылке. Нужно использовать команду /start!'))
+                self.page.add(ft.TextButton(text='Тут', url='https://web.telegram.org/a/#7118391258'))
+
+
+            else:
+                self.page.snack_bar = ft.SnackBar(ft.Text(f'Код ошибки {response.status_code}'))
+                self.page.snack_bar.open = True
+                self.page.update()
+        except Exception:
+            self.page.snack_bar = ft.SnackBar(ft.Text(f'Допущенна ошибка!'))
+            self.page.snack_bar.open = True
+            self.page.update()
+def main(page: ft.Page):
+    def register(e):
+        db = sqlite3.connect('User.db')
+        cur = db.cursor()
+
+        cur.execute("""CREATE TABLE IF NOT EXISTS Users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        user_name TEXT NOT NULL, 
+        password TEXT UNIQUE NOT NULL
+        )""")
+        cur.execute(f"INSERT INTO Users VALUES(NULL, '{user_name.value}', '{user_password.value}')")
+        db.commit()
+        db.close()
+        user_name.value = ''
+        user_password.value = ''
+        btn_reg.text = 'Добавлено'
+        page.update()
+
+
+
+    def auth_user(e):
+        db = sqlite3.connect('User.db')
+        cur = db.cursor()
+        cur.execute(f"SELECT * FROM Users WHERE user_name  = '{user_name_auth.value}' AND password = '{user_password_auth.value}'")
+        if cur.fetchone() is not None:
+            btn_auth.text = 'Авторизовано'
+
+            if len(page.navigation_bar.destinations) == 2:
+                page.navigation_bar.destinations.append(ft.NavigationDestination(
+                    icon=ft.icons.ADB_SHARP,
+                    label='Парсинг'))
+                page.navigation_bar.destinations.append(ft.NavigationDestination(
+                    icon=ft.icons.BOOK,
+                    label='Личный кабинет',
+                    selected_icon=ft.icons.BOOKMARK))
+                page.update()
+
+        else:
+            page.snack_bar= ft.SnackBar(ft.Text('Неверно введённые данные!'))
+            page.snack_bar.open= True
+            page.update()
+        db.commit()
+        db.close()
+    def validate(e):
+        if all([user_name_auth.value, user_password_auth.value]):
+            btn_auth.disabled = False
+        else:
+            btn_auth.disabled = True
+        page.update()
+        if all([user_name.value, user_password.value]):
+            btn_reg.disabled = False
+        else:
+            btn_reg.disabled = True
+
+
+    def find_all(e):
+        page.clean()
+        page.add(panel_parsing2)
+    def find(e):
+        page.clean()
+        page.add(panel_parsing)
+    page.title= 'Регистрация'
+    page.vertical_alignment='dark'
+    user_name = ft.TextField(label='Введите никнейм', width=400, on_change=validate)
+    user_password = ft.TextField(label='Введите пароль',width=400,password=True, on_change=validate)
+    user_name_auth = ft.TextField(label='Логин', width=400, on_change=validate, )
+    user_password_auth = ft.TextField(label='Пароль',width=400,password=True, on_change=validate)
+
+
+    page.window_width = 550
+    page.window_height =620
+    page.window_resizable = False
+    btn_reg = ft.OutlinedButton(text='Добавить', width=400, on_click=register, disabled=True)
+    btn_auth = ft.OutlinedButton(text='Авторизовать', width=400, disabled=True, on_click=auth_user)
+    url = ft.TextField(label='Введите url страницы', width=300)
+    tag = ft.TextField(label='Введите тег для поиска', width=300,)
+    atr = ft.TextField(label='Введите атрибут', width=300)
+    atr_name = ft.TextField(label='Введите название атрибута', width=300)
+    panel_parsing = Parsing(url=url, atr=atr, atr_name=atr_name, tag=tag,
+                         )
+
+    btn_find = ft.TextButton(text='Использовать метод find', on_click=find)
+
+    btn_find_all = ft.TextButton(text='Использовать метод find_all', width=230, on_click=find_all)
+    url2 = ft.TextField(label='Введите url страницы', width=300)
+    tag2 = ft.TextField(label='Введите тег для поиска', width=300)
+    atr2 = ft.TextField(label='Введите атрибут(необязательное поле)', width=300,)
+    atr_name2 = ft.TextField(label='Введите название атрибута(необязательное поле)', width=300)
+    panel_parsing2 = Find_all(url2=url2, tag2=tag2, atr2=atr2, atr_name2=atr_name2)
+
+
+    # Кабинет пользователя начало
+
+    users_list = ft.ListView(spacing=10, padding=20)
+    # Кабинет пользователя конец
+    panel = ft.Row([
+            ft.Column([
+                ft.Text('Регистрация'),
+                user_name,
+                user_password,
+                btn_reg
+
+            ])
+        ])
+    panel_kabinet =ft.Row([
+            ft.Column([
+                ft.Text('Личный Кабинет'),
+                users_list,
+
+            ])
+        ])
+    panel_auth = ft.Row([
+        ft.Column([
+            ft.Text('Авторизация'),
+            user_name_auth,
+            user_password_auth,
+            btn_auth
+
+        ])
+    ])
+    panel_document = ft.Row([
+
+            ft.Text('Пользовательское соглашение')])
+
+    panel_par = ft.Row([
+        ft.Column([btn_find_all, ft.Text('Данный метод позволяет парсить\nвсе введённые данные с сайта')]),
+        ft.Column([btn_find,ft.Text('Данный метод позволяет парсить\nконкретно введенные данные с сайта')]),
+    ], alignment=ft.MainAxisAlignment.CENTER)
+
+    sog = Check(text="Парсинг", panel_par=panel_par, text_check='Да, соглашаюсь', document='Вы соглашаетесь в тем что можете парсить кон.\nданные и идти против закона. Но ответственность полностью на вас\n')
+
+
+
+
+
+
+
+
+
+    def navigate(e):
+        index = page.navigation_bar.selected_index
+        page.clean()
+        if index == 0:
+            page.add(panel)
+        elif index == 1:
+            page.add(panel_auth)
+        elif index == 2:
+            page.add(panel_document, sog)
+        elif index == 3:
+
+            users_list.controls.clear()
+            db = sqlite3.connect('User.db')
+            cur = db.cursor()
+            cur.execute(
+                f"SELECT * FROM Users WHERE user_name = '{user_name_auth.value}' AND password = '{user_password_auth.value}'")
+            res = cur.fetchall()
+            if res != None:
+                for user in res:
+                    users_list.controls.append(ft.Column([ft.Text(f'Имя пользователя: {user[1]}\n'
+                                                               f'Пароль: {user[2]}'),
+                                ]))
+
+            db.commit()
+            db.close()
+            page.add(panel_kabinet)
+    page.navigation_bar = ft.NavigationBar(
+        destinations=[
+            ft.NavigationDestination(icon=ft.icons.VERIFIED_USER, label='Регистрация'),
+            ft.NavigationDestination(icon=ft.icons.VERIFIED_USER_OUTLINED, label='Авторизация')
+
+        ], on_change=navigate
+    )
+    page.add(
+        panel
+    )
+
+ft.app(target=main)
