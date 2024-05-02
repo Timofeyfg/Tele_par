@@ -1,0 +1,39 @@
+from aiogram import Bot, Dispatcher
+import asyncio
+
+
+from app import router
+
+bot = Bot(token='7118391258:AAGjJ75etXMTV9IGYPQJPzx-fLAkYsXEI4A')
+dp = Dispatcher(bot=bot)
+
+async def save():
+    dp.include_router(router)
+    await dp.start_polling(bot)
+
+if __name__ == '__main__':
+
+    try:
+        asyncio.run(save())
+    except KeyboardInterrupt:
+        print('Exit')
+
+
+
+from aiogram import Bot, Dispatcher, Router
+from aiogram.filters import CommandStart
+
+from aiogram.types import Message, FSInputFile
+
+
+router = Router()
+bot = Bot(token='7118391258:AAGjJ75etXMTV9IGYPQJPzx-fLAkYsXEI4A')
+dp = Dispatcher(bot=bot)
+@router.message(CommandStart())
+async def main3(message: Message):
+    document = FSInputFile('res.csv')
+    await message.answer_document(document)
+    import os
+
+    # Inbuilt function to remove files
+    os.remove("res.csv")
