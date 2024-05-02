@@ -1,0 +1,68 @@
+Main:
+from aiogram import Bot, Dispatcher, types, F
+import asyncio
+from aiogram.filters import CommandStart, Command
+from aiogram.types import Message
+from con import token
+import requests
+from bs4 import BeautifulSoup
+import lxml
+from app.handler import router
+bot = Bot(token=token)
+dp = Dispatcher(bot=bot)
+
+async def main():
+    dp.include_router(router)
+    await dp.start_polling(bot)
+
+if __name__ == '__main__':
+
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print('Exit')
+Handler:
+from aiogram import Bot, Dispatcher, types, F, Router
+import asyncio
+from aiogram.filters import CommandStart, Command
+from aiogram.types import Message
+from con import token
+import requests
+from bs4 import BeautifulSoup
+import lxml
+router = Router()
+bot = Bot(token=token)
+dp = Dispatcher(bot=bot)
+@router.message(CommandStart())
+async def echo(message: Message):
+    await message.reply(f'Здравствуйте, {message.from_user.first_name}\n'
+                        f'Команды бота:\n/about\n/contact\n/parcing'
+                        )
+@router.message(Command('about'))
+async def about(message: Message):
+    await message.reply('Данный телеграмм - бот. Предназначен для поверхностного парсинга данных.\nЕсли нужен более глубокий парсинг, /contact')
+@router.message(Command('contact'))
+async def contact(message: Message):
+    await message.reply(f'{message.from_user.first_name}, здравствуйте!\n'
+                        f'Если вы выбрали этот пункт, то вам нужна информация.\nЯ вам помогу сорентироваться с ценами.\n'
+                        f'Лайт парсинг - 249 рублей\n'
+                        f'Low парсинг - 499 рублей\n'
+                        f'High парсинг - 999 рублей\n'
+                        f'Hard парсинг - 1599 рублей\n'
+                        f'Когда выбрали свяжитесь со мной по номеру: +79993032415')
+@router.message(Command('parcing'))
+async def main3(message: Message):
+    await message.reply('Введите сайт')
+    @router.message(F.text)
+    async def main2(message: Message):
+        text = message.text
+        response = requests.get(text)
+        try:
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'lxml')
+                date = soup.find('a', class_='name_item')
+                await message.answer(date.get_text())
+            else:
+                await message.answer(f'{message.from_user.first_name}, попробуйте ещё раз')
+        except Exception:
+            await message.answer(f'Пишите, правильно')
