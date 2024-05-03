@@ -4,7 +4,7 @@ import asyncio
 
 from app import router
 
-bot = Bot(token='7118391258:AAGjJ75etXMTV9IGYPQJPzx-fLAkYsXEI4A')
+bot = Bot(token='')
 dp = Dispatcher(bot=bot)
 
 async def save():
